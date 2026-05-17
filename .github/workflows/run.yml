@@ -1,0 +1,28 @@
+name: Update NSE Top 250 Sheet
+
+on:
+  schedule:
+    - cron: '30 15 * * 1-5' # सोमवार से शुक्रवार, भारतीय समय अनुसार रात 9:00 बजे अपने आप चलेगा
+  workflow_dispatch: # इससे आप खुद भी जब चाहें रन कर सकते हैं
+
+jobs:
+  update-sheet:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install gspread oauth2client pandas requests
+
+    - name: Run Script
+      env:
+        GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+      run: python update_sheet.py
