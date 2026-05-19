@@ -27,46 +27,66 @@ worksheet = client.open_by_key(spreadsheet_id).worksheet("Top 250 Stocks")
 # 2. NSE Data Fetcher
 def fetch_bhavcopy_for_date(date_obj):
     date_str = date_obj.strftime("%Y%m%d")
+
     url = f"https://nsearchives.nseindia.com/content/cm/BhavCopy_NSE_CM_0_0_0_{date_str}_F_0000.csv.zip"
+
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        "User-Agent": "Mozilla/5.0",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Referer": "https://www.nseindia.com/",
+        "Connection": "keep-alive"
     }
+
     try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code == 200:
-            with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-                csv_filename = z.namelist()[0]
-                with z.open(csv_filename) as f:
-                    df = pd.read_csv(f)
-            
-            sym_col = 'TckrSymb' if 'TckrSymb' in df.columns else 'SYMBOL'
-            close_col = 'ClsPric' if 'ClsPric' in df.columns else 'CLOSE'
-            series_col = 'SctySrs' if 'SctySrs' in df.columns else 'SERIES'
-            
-            turnover_col = None
-            for c in ['TrdVal', 'TURNOVER', 'NET_TURNOVER']:
-                if c in df.columns:
-                    turnover_col = c
-                    break
-            
-            if not all([sym_col, close_col, turnover_col]):
-                return None
-            
-            if series_col:
-                df = df[df[series_col].astype(str).str.strip() == 'EQ']
-            
-            filter_keywords = 'BEES|ETF|GOLD|LIQUID|CASE|SILVER|LIQ'
-            df = df[~df[sym_col].astype(str).str.contains(filter_keywords, case=False, na=False)]
-            
-            df[turnover_col] = pd.to_numeric(df[turnover_col], errors='coerce')
-            df = df.dropna(subset=[turnover_col])
-            
-            df_top = df.sort_values(by=turnover_col, ascending=False).head(250)
-            return df_top[[sym_col, turnover_col, close_col]].values.tolist()
-        return None
+        session = requests.Session()
+
+        # NSE warm-up request
+        session.get("https://www.nseindia.com", headers=headers, timeout=10)
+
+        response = session.get(url, headers=headers, timeout=20)
+
+        print(f"Trying: {url}")
+        print(f"Status Code: {response.status_code}")
+
+        if response.status_code != 200:
+            return None
+
+        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+            csv_filename = z.namelist()[0]
+
+            with z.open(csv_filename) as f:
+                df = pd.read_csv(f)
+
+        sym_col = 'TckrSymb' if 'TckrSymb' in df.columns else 'SYMBOL'
+        close_col = 'ClsPric' if 'ClsPric' in df.columns else 'CLOSE'
+        series_col = 'SctySrs' if 'SctySrs' in df.columns else 'SERIES'
+
+        turnover_col = None
+        for c in ['TrdVal', 'TURNOVER', 'NET_TURNOVER']:
+            if c in df.columns:
+                turnover_col = c
+                break
+
+        if turnover_col is None:
+            print("Turnover column missing")
+            return None
+
+        if series_col:
+            df = df[df[series_col].astype(str).str.strip() == 'EQ']
+
+        filter_keywords = 'BEES|ETF|GOLD|LIQUID|CASE|SILVER|LIQ'
+        df = df[~df[sym_col].astype(str).str.contains(filter_keywords, case=False, na=False)]
+
+        df[turnover_col] = pd.to_numeric(df[turnover_col], errors='coerce')
+        df = df.dropna(subset=[turnover_col])
+
+        df_top = df.sort_values(by=turnover_col, ascending=False).head(250)
+
+        return df_top[[sym_col, turnover_col, close_col]].values.tolist()
+
     except Exception as e:
-        print(f"Error fetching for date {date_str}: {str(e)}")
+        print(f"Error fetching for date {date_str}: {e}")
         return None
 
 # 3. Logic
