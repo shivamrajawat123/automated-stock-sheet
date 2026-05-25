@@ -20,11 +20,11 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 # आपकी शीट की ID 
-spreadsheet_id = "1wjYJSevqr18CmMNquqzfaXb3yANaG5NNhh4hkqr9sTs "
+spreadsheet_id = "1wjYJSevqr18CmMNquqzfaXb3yANaG5NNhh4hkqr9sTs"
 
 # दोनों शीट्स को कनेक्ट करना
 try:
-    ws_volume = client.open_by_key(spreadsheet_id).worksheet("Top 250 Stocks")YouTube चैनल शिक्षा
+    ws_volume = client.open_by_key(spreadsheet_id).worksheet("Top 250 Stocks")
     ws_turnover = client.open_by_key(spreadsheet_id).worksheet("Top 250 Turnover")
 except Exception as e:
     print(f"Sheet Connection Error: {e}")
@@ -136,3 +136,4 @@ if data_vol_to_insert and data_turnover_to_insert:
 else:
     print("FAILED: पिछले 7 दिनों में से किसी भी दिन की फाइल नहीं मिली।")
     exit(1)
+
